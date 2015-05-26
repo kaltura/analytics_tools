@@ -12,11 +12,10 @@ class SimSession
 
      val _httpWrapper = HttpWrapper.getInstance
 
-     def generateTimeEvents( time: Long, partnerId: Int, entryId: String, referrerId: String, locationId: String )
+     def generateTimeEvents( time: Long, partnerId: Int, entryId: String, referrerId: String, locationId: String, eventType: Int )
      {
           _eventIndex = _eventIndex + 1
 
-          _httpWrapper.send(time, partnerId.toString, entryId, referrerId, locationId, _eventIndex.toString, "1")
-          _httpWrapper.send(time, partnerId.toString, entryId, referrerId, locationId, _eventIndex.toString, "2")
+          _httpWrapper.send(time, partnerId.toString, entryId, referrerId, locationId, _eventIndex.toString, eventType.toString)
      }
 }

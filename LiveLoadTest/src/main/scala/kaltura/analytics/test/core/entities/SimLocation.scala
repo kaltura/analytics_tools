@@ -8,43 +8,14 @@ class SimLocation( val _locationNo: Int )
 {
      val _locationCode = SimIP.locationIdToIp(_locationNo)
 
-     var _sessions: Vector[SimSession] = Vector.empty
+     var _sessionsManager: SimSessionsManager = new SimSessionsManager(_locationCode, 1)
+     var _dvrSessionsManager: SimSessionsManager = new SimSessionsManager(_locationCode, 2)
 
-     private def addSessions( nNewSessions: Int )
-     {
-          for ( sessionNo <- 0 until nNewSessions )
-          {
-               _sessions = _sessions :+ new SimSession()
-          }
-     }
-
-     private def removeSessions( nRemoveSessions: Int )
-     {
-          _sessions = _sessions.drop(nRemoveSessions)
-     }
-
-     private def updateSessionsPoolSize( nSessions: Int )
-     {
-          val sessionsPoolSize = _sessions.length
-
-          if ( sessionsPoolSize < nSessions )
-          {
-               val nNewSessions = nSessions - sessionsPoolSize
-               addSessions(nNewSessions)
-          }
-          else if ( sessionsPoolSize > nSessions )
-          {
-               val nRemoveSessions = sessionsPoolSize - nSessions
-               removeSessions(nRemoveSessions)
-          }
-     }
 
      def generateTimeEvents( time: Long, partnerId: Int, entryId: String, referrerId: String )
      {
-          val simTimeSessionPoolSize = SimLoadManager.getTimeOpenSession(time)
+          _sessionsManager.generateTimeEvents(time, partnerId, entryId, referrerId)
 
-          updateSessionsPoolSize(simTimeSessionPoolSize)
-
-          _sessions.foreach(x => x.generateTimeEvents(time, partnerId, entryId, referrerId, _locationCode) )
+          _dvrSessionsManager.generateTimeEvents(time, partnerId, entryId, referrerId)
      }
 }

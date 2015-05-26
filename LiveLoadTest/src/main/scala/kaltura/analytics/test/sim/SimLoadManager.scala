@@ -21,15 +21,42 @@ object SimLoadManager
           _iteration += 1
      }
 
-     def getTimeOpenSession( time: Long ): Int =
+     def baseSessions( eventType: Int ) =
      {
+          val nSessions = eventType match
+          {
+               case 1 => SimParams._nBaseSessions
+               case 2 => SimParams._nBaseDVRSessions
+          }
+          nSessions
+     }
+
+     def deltaSessions( eventType: Int ) =
+     {
+          val nSessions = eventType match
+          {
+               case 1 => SimParams._nMaxDeltaSessions
+               case 2 => SimParams._nMaxDeltaDVRSessions
+          }
+          nSessions
+     }
+
+     def getTimeOpenSession( time: Long, eventType: Int ): Int =
+     {
+          val base = baseSessions(eventType)
+          val delta = deltaSessions(eventType)
 
           // version 2
-          var nSessions = 0
-          if ( _iteration % 2 == 0 )
-               nSessions = SimParams._nBaseSessions + SimParams._nMaxDeltaSessions
-          else
-               nSessions = SimParams._nBaseSessions - SimParams._nMaxDeltaSessions
+          var nSessions = base
+
+          if ( SimParams._deltaStrategyCode == 1 )
+          {
+               if ( _iteration % 2 == 0 )
+                    nSessions += delta
+               else
+                    nSessions -= delta
+          }
+
 
 
           // version 1

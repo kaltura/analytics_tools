@@ -1,6 +1,7 @@
 package kaltura.analytics.test.com;
 
 import com.ning.http.client.*;
+import com.ning.http.client.AsyncHttpClient;
 import kaltura.analytics.test.env.SimParams;
 
 import java.text.DateFormat;

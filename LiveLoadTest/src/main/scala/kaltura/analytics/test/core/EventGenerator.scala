@@ -90,7 +90,7 @@ object EventGenerator
                                    hourlyPlaysEventsPerLocation = 0
                               }
 
-                              val timeAliveEventsPerLocation = SimLoadManager.getTimeOpenSession(simTime)
+                              val timeAliveEventsPerLocation = SimLoadManager.getTimeOpenSession(simTime, 1)
                               val timePlaysEventsPerLocation = math.max(0l, timeAliveEventsPerLocation - lastTimeAliveEventsPerLocation)
 
                               val actualTimeAliveEventsPerLocation = timeAliveEventsPerLocation - timePlaysEventsPerLocation
@@ -98,7 +98,7 @@ object EventGenerator
 
                               lastTimeAliveEventsPerLocation = timeAliveEventsPerLocation
 
-                              if ( SimParams._checkConsistency && recheckAggregates && ( iterationCounter % 30 == 0 ) )
+                              if ( SimParams._checkConsistency && recheckAggregates && ( iterationCounter % SimParams._recheckFrequency == 0 ) )
                               {
                                    validateAggregations(entriesIds, simTime, actualTimeAliveEventsPerLocation, timePlaysEventsPerLocation)
                               }

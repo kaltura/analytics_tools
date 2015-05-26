@@ -1,6 +1,7 @@
 package kaltura.analytics.test.com;
 
 import kaltura.analytics.test.env.SimParams;
+import kaltura.analytics.test.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -400,40 +401,37 @@ public class LiveEventsCassandraDriver
     {
         //logger.debug("readHourlyEntriesLiveEvents()");
 
-        StringBuilder entriesBundle = new StringBuilder();
-
-        for ( int i = 0; i < entries.length; i++)
-        {
-            entriesBundle.append("'");
-            entriesBundle.append(entries[i]);
-            entriesBundle.append("'");
-
-            if ( i < entries.length - 1)
-                entriesBundle.append(", ");
-        }
+        String entriesBundle = StringUtil.createInListWithApostrophe(entries);
 
         Date currentDateTime = new Date(time);
 
         String dateTimeStr = dateFormat.format(currentDateTime);
 
+        Boolean discrepanciesFound = false;
+        Integer nDiscrepancies = 0;
         try
         {
-
             //System.out.println(String.format("SELECT * FROM %s WHERE %s in (%s) and %s='%s';", liveEventColumnFamilyName, COL_NAME_ENTRY_ID, entriesBundle.toString(), COL_NAME_EVENT_TIME, dateTimeStr));
 
             OperationResult<CqlResult<String, String>> result
                     = keyspace.prepareQuery(liveEventColumnFamily)
-                    .withCql(String.format("SELECT * FROM %s WHERE %s in (%s) and %s='%s';", liveEventColumnFamilyName, COL_NAME_ENTRY_ID, entriesBundle.toString(), COL_NAME_EVENT_TIME, dateTimeStr))
+                    .withCql(String.format("SELECT * FROM %s WHERE %s in (%s) and %s='%s';", liveEventColumnFamilyName, COL_NAME_ENTRY_ID, entriesBundle, COL_NAME_EVENT_TIME, dateTimeStr))
                     .execute();
 
             int nActualEntries = result.getResult().getRows().size();
 
-            if ( ( nActualEntries > 0 ) && ( nActualEntries != entries.length ) )
+            if ( /*( nActualEntries > 0 ) && ( */ nActualEntries != entries.length ) /*)*/ //TODO: what was the purpose of that first check? I believe in case nothing was written yet we considered to be OK
             {
                 logger.error(String.format("simulation failure time: %s actual num entries: %d expected num entries: %d", dateTimeStr, result.getResult().getRows().size(), entries.length));
+
+                if ( SimParams._verbose() )
+                    System.out.println(String.format("simulation failure time: %s actual num entries: %d expected num entries: %d", dateTimeStr, result.getResult().getRows().size(), entries.length));
+
                 return;
             }
 
+            if ( SimParams._verbose() )
+                System.out.println("validating " + new Integer(entries.length).toString() + " entries");
 
             for ( Row<String, String> row : result.getResult().getRows() )
             {
@@ -448,16 +446,28 @@ public class LiveEventsCassandraDriver
 
                 if ( actualAlive != expectedAlive )
                 {
+                    discrepanciesFound = true;
+                    nDiscrepancies++;
+
                     String entry = cols.getStringValue(COL_NAME_ENTRY_ID, null);
 
                     logger.error(String.format("simulation failure entry: %s time: %s actual alive: %d expected alive: %d", entry, dateTimeStr, actualAlive, expectedAlive));
+
+                    if ( SimParams._verbose() )
+                        System.out.println(String.format("simulation failure entry: %s time: %s actual alive: %d expected alive: %d", entry, dateTimeStr, actualAlive, expectedAlive));
                 }
 
                 if ( actualPlays != expectedPlays )
                 {
+                    discrepanciesFound = true;
+                    nDiscrepancies++;
+
                     String entry = cols.getStringValue(COL_NAME_ENTRY_ID, null);
 
                     logger.error(String.format("simulation failure entry: %s time: %s actual plays: %d expected plays: %d", entry, dateTimeStr, actualPlays, expectedPlays));
+
+                    if ( SimParams._verbose() )
+                        System.out.println(String.format("simulation failure entry: %s time: %s actual plays: %d expected plays: %d", entry, dateTimeStr, actualPlays, expectedPlays));
                 }
 
                 //System.out.println("validate OK");
@@ -470,7 +480,13 @@ public class LiveEventsCassandraDriver
 //                System.out.println("- buffer time: "+cols.getLongValue(COL_NAME_BUFFER_TIME, null));
             }
 
-            System.out.println(String.format("validate time: %s OK", dateTimeStr));
+            if ( SimParams._verbose() )
+            {
+                if ( !discrepanciesFound )
+                    System.out.println(String.format("validate time: %s OK", dateTimeStr));
+                else
+                    System.out.println(String.format("validate time: %s found %d discrepancies", dateTimeStr, nDiscrepancies));
+            }
         }
         catch (ConnectionException e)
         {
@@ -484,34 +500,32 @@ public class LiveEventsCassandraDriver
     {
         //logger.debug("readHourlyEntriesLiveEvents()");
 
-        StringBuilder partnersBundle = new StringBuilder();
-
-        for ( int i = 0; i < partners.length; i++)
-        {
-            partnersBundle.append("'");
-            partnersBundle.append(partners[i]);
-            partnersBundle.append("'");
-
-            if ( i < partners.length - 1)
-                partnersBundle.append(", ");
-        }
+        String partnersBundle = StringUtil.createInList(partners);
 
         Date currentDateTime = new Date(time);
 
         String dateTimeStr = dateFormat.format(currentDateTime);
 
+        Boolean discrepanciesFound = false;
+        Integer nDiscrepancies = 0;
         try
         {
             //System.out.println(String.format("SELECT * FROM %s WHERE %s in (%s) and %s='%s';", hourlyLiveEventColumnFamilyName, COL_NAME_ENTRY_ID, entriesBundle.toString(), COL_NAME_EVENT_TIME, dateTimeStr));
 
             OperationResult<CqlResult<String, String>> result
                     = keyspace.prepareQuery(hourlyLiveEventColumnFamily)
-                    .withCql(String.format("SELECT * FROM %s WHERE %s in (%s) and %s='%s';", hourlyLiveEventColumnFamilyName, COL_NAME_ENTRY_ID, partnersBundle.toString(), COL_NAME_EVENT_TIME, dateTimeStr))
+                    .withCql(String.format("SELECT * FROM %s WHERE %s in (%s) and %s='%s';", hourlyLiveEventPartnerColumnFamilyName, COL_NAME_PARTNER_ID, partnersBundle, COL_NAME_EVENT_TIME, dateTimeStr))
                     .execute();
 
-            if ( result.getResult().getRows().size() != partners.length )
+            int nActualPartners = result.getResult().getRows().size();
+
+            if ( nActualPartners != partners.length )
             {
-                logger.error(String.format("hourly simulation failure time: %s actual num partners: %d expected num partners: %d", dateTimeStr, result.getResult().getRows().size(), partners.length));
+                logger.error(String.format("hourly partners simulation failure time: %s actual num partners: %d expected num partners: %d", dateTimeStr, result.getResult().getRows().size(), partners.length));
+
+                if ( SimParams._verbose() )
+                    System.out.println(String.format("hourly partners simulation failure time: %s actual num partners: %d expected num partners: %d", dateTimeStr, result.getResult().getRows().size(), partners.length));
+
                 return;
             }
 
@@ -530,16 +544,28 @@ public class LiveEventsCassandraDriver
 
                 if ( actualAlive != expectedAlive )
                 {
-                    String entry = cols.getStringValue(COL_NAME_ENTRY_ID, null);
+                    discrepanciesFound = true;
+                    nDiscrepancies++;
 
-                    logger.error(String.format("hourly entries simulation failure partner: %s time: %s actual alive: %d expected alive: %d", entry, dateTimeStr, actualAlive, expectedAlive));
+                    String partner = cols.getStringValue(COL_NAME_PARTNER_ID, null);
+
+                    logger.error(String.format("hourly partners simulation failure partner: %s time: %s actual alive: %d expected alive: %d", partner, dateTimeStr, actualAlive, expectedAlive));
+
+                    if ( SimParams._verbose() )
+                        System.out.println(String.format("hourly partners simulation failure partner: %s time: %s actual alive: %d expected alive: %d", partner, dateTimeStr, actualAlive, expectedAlive));
                 }
 
                 if ( actualPlays != expectedPlays )
                 {
-                    String entry = cols.getStringValue(COL_NAME_ENTRY_ID, null);
+                    discrepanciesFound = true;
+                    nDiscrepancies++;
 
-                    logger.error(String.format("hourly entries simulation failure partner: %s time: %s actual plays: %d expected plays: %d", entry, dateTimeStr, actualPlays, expectedPlays));
+                    String partner = cols.getStringValue(COL_NAME_PARTNER_ID, null);
+
+                    logger.error(String.format("hourly partners simulation failure partner: %s time: %s actual plays: %d expected plays: %d", partner, dateTimeStr, actualPlays, expectedPlays));
+
+                    if ( SimParams._verbose() )
+                        System.out.println(String.format("hourly partners simulation failure partner: %s time: %s actual plays: %d expected plays: %d", partner, dateTimeStr, actualPlays, expectedPlays));
                 }
 
 //                System.out.println("- entry id: "+cols.getStringValue(COL_NAME_ENTRY_ID, null));
@@ -551,7 +577,14 @@ public class LiveEventsCassandraDriver
 //                System.out.println("- buffer time: "+cols.getLongValue(COL_NAME_BUFFER_TIME, null));
             }
 
-            System.out.println(String.format("hourly partners validate time: %s OK", dateTimeStr));
+            if ( SimParams._verbose() )
+            {
+                if ( !discrepanciesFound )
+                    System.out.println(String.format("hourly partners validate time: %s OK", dateTimeStr));
+                else
+                    System.out.println(String.format("hourly partners validate time: %s found %d discrepancies", dateTimeStr, nDiscrepancies));
+            }
+
         }
         catch (ConnectionException e)
         {
@@ -565,34 +598,32 @@ public class LiveEventsCassandraDriver
     {
         //logger.debug("readHourlyEntriesLiveEvents()");
 
-        StringBuilder entriesBundle = new StringBuilder();
-
-        for ( int i = 0; i < entries.length; i++)
-        {
-            entriesBundle.append("'");
-            entriesBundle.append(entries[i]);
-            entriesBundle.append("'");
-
-            if ( i < entries.length - 1)
-                entriesBundle.append(", ");
-        }
+        String entriesBundle = StringUtil.createInListWithApostrophe(entries);
 
         Date currentDateTime = new Date(time);
 
         String dateTimeStr = dateFormat.format(currentDateTime);
 
+        Boolean discrepanciesFound = false;
+        Integer nDiscrepancies = 0;
         try
         {
             //System.out.println(String.format("SELECT * FROM %s WHERE %s in (%s) and %s='%s';", hourlyLiveEventColumnFamilyName, COL_NAME_ENTRY_ID, entriesBundle.toString(), COL_NAME_EVENT_TIME, dateTimeStr));
 
             OperationResult<CqlResult<String, String>> result
                     = keyspace.prepareQuery(hourlyLiveEventColumnFamily)
-                    .withCql(String.format("SELECT * FROM %s WHERE %s in (%s) and %s='%s';", hourlyLiveEventColumnFamilyName, COL_NAME_ENTRY_ID, entriesBundle.toString(), COL_NAME_EVENT_TIME, dateTimeStr))
+                    .withCql(String.format("SELECT * FROM %s WHERE %s in (%s) and %s='%s';", hourlyLiveEventColumnFamilyName, COL_NAME_ENTRY_ID, entriesBundle, COL_NAME_EVENT_TIME, dateTimeStr))
                     .execute();
 
-            if ( result.getResult().getRows().size() != entries.length )
+            int nActualEntries = result.getResult().getRows().size();
+
+            if ( nActualEntries != entries.length )
             {
                 logger.error(String.format("hourly simulation failure time: %s actual num entries: %d expected num entries: %d", dateTimeStr, result.getResult().getRows().size(), entries.length));
+
+                if ( SimParams._verbose() )
+                    System.out.println(String.format("hourly entries simulation failure time: %s actual num entries: %d expected num entries: %d", dateTimeStr, result.getResult().getRows().size(), entries.length));
+
                 return;
             }
 
@@ -611,16 +642,28 @@ public class LiveEventsCassandraDriver
 
                 if ( actualAlive != expectedAlive )
                 {
+                    discrepanciesFound = true;
+                    nDiscrepancies++;
+
                     String entry = cols.getStringValue(COL_NAME_ENTRY_ID, null);
 
                     logger.error(String.format("hourly entries simulation failure entry: %s time: %s actual alive: %d expected alive: %d", entry, dateTimeStr, actualAlive, expectedAlive));
+
+                    if ( SimParams._verbose() )
+                        System.out.println(String.format("hourly entries simulation failure entry: %s time: %s actual alive: %d expected alive: %d", entry, dateTimeStr, actualAlive, expectedAlive));
                 }
 
                 if ( actualPlays != expectedPlays )
                 {
+                    discrepanciesFound = true;
+                    nDiscrepancies++;
+
                     String entry = cols.getStringValue(COL_NAME_ENTRY_ID, null);
 
                     logger.error(String.format("hourly entries simulation failure entry: %s time: %s actual plays: %d expected plays: %d", entry, dateTimeStr, actualPlays, expectedPlays));
+
+                    if ( SimParams._verbose() )
+                        System.out.println(String.format("hourly entries simulation failure entry: %s time: %s actual plays: %d expected plays: %d", entry, dateTimeStr, actualPlays, expectedPlays));
                 }
 
 //                System.out.println("- entry id: "+cols.getStringValue(COL_NAME_ENTRY_ID, null));
@@ -632,7 +675,13 @@ public class LiveEventsCassandraDriver
 //                System.out.println("- buffer time: "+cols.getLongValue(COL_NAME_BUFFER_TIME, null));
             }
 
-            System.out.println(String.format("hourly entries validate time: %s OK", dateTimeStr));
+            if ( SimParams._verbose() )
+            {
+                if ( !discrepanciesFound )
+                    System.out.println(String.format("hourly entries validate time: %s OK", dateTimeStr));
+                else
+                    System.out.println(String.format("hourly entries validate time: %s found %d discrepancies", dateTimeStr, nDiscrepancies));
+            }
         }
         catch (ConnectionException e)
         {
@@ -650,6 +699,8 @@ public class LiveEventsCassandraDriver
 
         String dateTimeStr = dateFormat.format(currentDateTime);
 
+        Boolean discrepanciesFound = false;
+        Integer nDiscrepancies = 0;
         try
         {
             for ( int i = 0; i < entries.length; i++)
@@ -661,9 +712,15 @@ public class LiveEventsCassandraDriver
                         .withCql(String.format("SELECT * FROM %s WHERE %s='%s' and %s='%s';", hourlyLiveEventReferrerColumnFamilyName, COL_NAME_ENTRY_ID, entries[i], COL_NAME_EVENT_TIME, dateTimeStr))
                         .execute();
 
-                if ( result.getResult().getRows().size() != SimParams._nReferrers() )
+                int nActualReferrers = result.getResult().getRows().size();
+
+                if ( nActualReferrers != SimParams._nReferrers() )
                 {
                     logger.error(String.format("hourly referrers simulation failure time: %s actual num referrers: %d expected num referrers: %d", dateTimeStr, result.getResult().getRows().size(), SimParams._nReferrers()));
+
+                    if ( SimParams._verbose() )
+                        System.out.println(String.format("hourly referrers simulation failure time: %s actual num referrers: %d expected num referrers: %d", dateTimeStr, result.getResult().getRows().size(), SimParams._nReferrers()));
+
                     return;
                 }
 
@@ -682,16 +739,28 @@ public class LiveEventsCassandraDriver
 
                     if ( actualAlive != expectedAlive )
                     {
+                        discrepanciesFound = true;
+                        nDiscrepancies++;
+
                         String referrer = cols.getStringValue(COL_NAME_REFERRER, null);
 
                         logger.error(String.format("hourly referrers simulation failure entry: %s referrer: %s time: %s actual alive: %d expected alive: %d", entries[i], referrer, dateTimeStr, actualAlive, expectedAlive));
+
+                        if ( SimParams._verbose() )
+                            System.out.println(String.format("hourly referrers simulation failure entry: %s referrer: %s time: %s actual alive: %d expected alive: %d", entries[i], referrer, dateTimeStr, actualAlive, expectedAlive));
                     }
 
                     if ( actualPlays != expectedPlays )
                     {
+                        discrepanciesFound = true;
+                        nDiscrepancies++;
+
                         String referrer = cols.getStringValue(COL_NAME_REFERRER, null);
 
                         logger.error(String.format("hourly referrers simulation failure entry: %s referrer: %s time: %s actual plays: %d expected plays: %d", entries[i], referrer, dateTimeStr, actualPlays, expectedPlays));
+
+                        if ( SimParams._verbose() )
+                            System.out.println(String.format("hourly referrers simulation failure entry: %s referrer: %s time: %s actual plays: %d expected plays: %d", entries[i], referrer, dateTimeStr, actualPlays, expectedPlays));
                     }
 
 //                System.out.println("- entry id: "+cols.getStringValue(COL_NAME_ENTRY_ID, null));
@@ -704,7 +773,13 @@ public class LiveEventsCassandraDriver
                 }
             }
 
-            System.out.println(String.format("hourly referrers validate time: %s OK", dateTimeStr));
+            if ( SimParams._verbose() )
+            {
+                if ( !discrepanciesFound )
+                    System.out.println(String.format("hourly referrers validate time: %s OK", dateTimeStr));
+                else
+                    System.out.println(String.format("hourly referrers validate time: %s found %d discrepancies", dateTimeStr, nDiscrepancies));
+            }
         }
         catch (ConnectionException e)
         {

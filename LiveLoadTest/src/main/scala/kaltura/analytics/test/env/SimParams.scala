@@ -2,9 +2,15 @@ package kaltura.analytics.test.env
 
 object SimParams
 {
+     val _verbose = false
+
+     val _recheckFrequency = 1
+
      var _partner = ""
 
      var _cassandraAddress = "192.168.31.91:9160"
+
+     var _deltaStrategyCode = 0
 
      var _checkConsistency = false
 
@@ -20,21 +26,25 @@ object SimParams
 
      var _entries: Vector[String] = Vector.empty
      
-     var _nPartners = 10 //10
+     var _nPartners = 1 //10
 
-     var _nEntries = 10 //10
+     var _nEntries = 1 //10
 
-     var _nReferrers = 5 //5
+     var _nReferrers = 1 //5
 
-     var _nLocations = 40 //40
+     var _nLocations = 1 //40
 
-     var _nBaseSessions = 4 //5
+     var _nBaseSessions = 1 //5
+
+     var _nMaxDeltaSessions = 0 // 3
+
+     var _nBaseDVRSessions = 0 //5
+
+     var _nMaxDeltaDVRSessions = 0 // 3
 
      var _bitRate = 100
 
      var _bufferTime = 0
-
-     var _nMaxDeltaSessions = 0 // 3
 
      def _timeReSyncThreshold = 3000
 

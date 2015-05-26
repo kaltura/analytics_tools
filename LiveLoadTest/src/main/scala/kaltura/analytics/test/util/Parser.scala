@@ -11,6 +11,9 @@ object Parser
      {
           var nSessions = 0
 
+          if ( line.isEmpty )
+               return  nSessions
+
           val pairs = line.substring(1, line.length - 1).trim  // hack off braces
 
           val pairsTokens: StringTokenizer = new StringTokenizer(pairs, ",")
@@ -52,6 +55,10 @@ object Parser
                     case "n_alive" => SimParams._nBaseSessions = value.toInt
 
                     case "n_alive_delta" => SimParams._nMaxDeltaSessions= value.toInt
+
+                    case "n_dvr" => SimParams._nBaseDVRSessions = value.toInt
+
+                    case "n_dvr_delta" => SimParams._nMaxDeltaDVRSessions= value.toInt
 
                     case "bit_rate" => SimParams._bitRate = value.toInt
 

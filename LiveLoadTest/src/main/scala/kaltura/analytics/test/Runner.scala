@@ -16,6 +16,12 @@ object Runner
           if ( args.length == 0 )
                sys.exit(1)
 
+
+          if ( args.length > 4 )
+          {
+               SimParams._deltaStrategyCode = args(4).toInt
+          }
+
           if ( args.length > 3 )
           {
                SimParams._checkConsistency = (args(3).length > 0)
